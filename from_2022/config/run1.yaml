@@ -1,0 +1,31 @@
+run_number: 1
+
+trans_data: grouped
+
+
+trans_params:
+    counts: True
+    sums: True
+    sign: negative
+    filter_count: 50
+    normed: True
+    convert_currency: True
+
+
+trans_time_features: ['hour']
+
+train_params:
+    sample_size: 70
+    validation: False
+    resample_freq: 1000
+    random_state: 42
+    thread_count: 20
+    verbose: 500
+
+catboost_params:
+    iterations: 15000
+    learning_rate: 0.03
+    depth: 8
+    l2_leaf_reg: 0.77
+    random_seed: 42
+    use_best_model: False
