@@ -123,3 +123,23 @@ def predict_gru(text:str, path_to_model='model_gru.pt',path_to_vocab = 'vocab_fo
     prediction_time = round(time.time()-start_time,2)
 
     return decode(out), prediction_time
+
+# Функция предсказания BERT модели
+def predict_bert(text:str, BERT_model, tokenizer, clf_model, MAX_LEN = 154)-> str:
+    start_time = time.time()
+    tokenized = tokenizer.encode(text, add_special_tokens=True, truncation=True, max_length=MAX_LEN)
+    padded = np.array(tokenized + [0]*(MAX_LEN-len(tokenized)))
+    attention_mask = np.where(padded != 0, 1, 0)
+    attention_mask = torch.LongTensor(attention_mask).unsqueeze(0)
+    padded = torch.LongTensor(padded).unsqueeze(0)
+    model = BERT_model
+    features = []
+    with torch.inference_mode():
+            last_hidden_states = model(padded, attention_mask=attention_mask)
+            vectors = last_hidden_states[0][:,0,:].numpy()
+            features = vectors
+    clf = clf_model
+    out = clf.predict(features)
+    prediction_time = round(time.time()-start_time,2)
+
+    return decode(out), prediction_time
