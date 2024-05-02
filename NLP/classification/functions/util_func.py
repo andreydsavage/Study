@@ -7,6 +7,18 @@ from nltk.stem.snowball import SnowballStemmer
 import string
 import numpy as np
 import torch
+
+import sys
+# sys.path.append("classification/functions/")
+# sys.path.append("functions/")
+from GRU_class import GRUnet
+
+
+
+import transformers
+import joblib
+
+# import torch.nn as nn
 import json
 import time
 
@@ -109,9 +121,13 @@ class RNN_config:
     bidirectional : bool or int
 
 #Функция для предсказания GRU модели
-def predict_gru(text:str, path_to_model='model_gru.pt',path_to_vocab = 'vocab_for_GRU.json', SEQ_LEN = 154, )->str:
+def predict_gru(text:str, conf_path = 'conf_GRU.pkl',path_to_state_dict='model_gru.pt',path_to_vocab = 'vocab_for_GRU.json', SEQ_LEN = 154, )->str:
     start_time = time.time()
-    model_gru = torch.load(path_to_model)
+    config = joblib.load(conf_path)
+    model_gru = GRUnet(config)
+    model_gru.load_state_dict(torch.load(path_to_state_dict))
+    model_gru.eval()
+
     with open(path_to_vocab) as f:
         vocab_to_int = json.load(f)
     text = data_preprocessing(text)
@@ -125,20 +141,31 @@ def predict_gru(text:str, path_to_model='model_gru.pt',path_to_vocab = 'vocab_fo
     return decode(out), prediction_time
 
 # Функция предсказания BERT модели
-def predict_bert(text:str, BERT_model, tokenizer, clf_model, MAX_LEN = 154)-> str:
+def predict_bert(text:str, clf_path= "LogReg_Bert.pkl", MAX_LEN = 154)-> str:
     start_time = time.time()
+    model_class = transformers.DistilBertModel
+    # токенайзер к ней (для некоторых моделей токенайзер будет отличаться, см.
+    ## в документации к каждой модели конкретно)
+    tokenizer_class = transformers.DistilBertTokenizer
+    ## загружаем веса для моделей
+    pretrained_weights = 'distilbert-base-uncased' # tiny -> base-> large -> XL
+    # создаем объекты токенизатора для и модели
+    tokenizer = tokenizer_class.from_pretrained('distilbert-base-uncased')
+    model = model_class.from_pretrained('distilbert-base-uncased')
+
     tokenized = tokenizer.encode(text, add_special_tokens=True, truncation=True, max_length=MAX_LEN)
     padded = np.array(tokenized + [0]*(MAX_LEN-len(tokenized)))
     attention_mask = np.where(padded != 0, 1, 0)
     attention_mask = torch.LongTensor(attention_mask).unsqueeze(0)
     padded = torch.LongTensor(padded).unsqueeze(0)
-    model = BERT_model
+
     features = []
     with torch.inference_mode():
             last_hidden_states = model(padded, attention_mask=attention_mask)
             vectors = last_hidden_states[0][:,0,:].numpy()
             features = vectors
-    clf = clf_model
+
+    clf = joblib.load(clf_path)
     out = clf.predict(features)
     prediction_time = round(time.time()-start_time,2)
 
