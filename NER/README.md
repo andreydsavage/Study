@@ -4,4 +4,3 @@
 **Что почитать**
  - https://habr.com/ru/articles/531940/
  - https://spacy.io/models
- - 
